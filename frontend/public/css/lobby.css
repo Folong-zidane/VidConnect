@@ -1,0 +1,108 @@
+:root {
+    --primary: #845695;
+    --primary-dark: #6a457a;
+    --bg-dark: #1a1a1a;
+    --bg-medium: #262625;
+    --bg-light: #3f434a;
+    --text-light: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 90%;
+    max-width: 600px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.form-container {
+    background-color: var(--bg-medium);
+    border-radius: 8px;
+    padding: 2rem;
+}
+
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: var(--bg-light);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-light);
+}
+
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+button {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#create-btn {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+}
+
+#create-btn:hover {
+    background-color: var(--bg-light);
+    opacity: 0.9;
+}
+
+#join-btn {
+    background-color: var(--primary);
+    color: var(--text-light);
+}
+
+#join-btn:hover {
+    background-color: var(--primary-dark);
+}

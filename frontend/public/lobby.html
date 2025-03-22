@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioExchange - Lobby</title>
+    <link rel="stylesheet" href="css/lobby.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- En-tête -->
+        <div class="header">
+            <h1>AudioExchange</h1>
+            <p>Communication audio et vidéo en temps réel</p>
+        </div>
+
+        <!-- Formulaire pour rejoindre ou créer une salle -->
+        <div class="form-container">
+            <h2><i class="fas fa-video"></i> Rejoindre ou Créer une Salle</h2>
+            
+            <form id="join-form">
+                <!-- Champ pour le nom d'utilisateur -->
+                <div class="input-group">
+                    <label for="username">Votre nom (optionnel)</label>
+                    <input type="text" id="username" placeholder="Entrez votre nom">
+                </div>
+                
+                <!-- Champ pour l'ID de la salle -->
+                <div class="input-group">
+                    <label for="room-id">ID de la salle</label>
+                    <input type="text" id="room-id" placeholder="Entrez l'ID de la salle ou laissez vide pour en créer une">
+                </div>
+                
+                <!-- Boutons pour créer ou rejoindre une salle -->
+                <div class="button-group">
+                    <button type="button" id="create-btn">Créer une salle</button>
+                    <button type="submit" id="join-btn">Rejoindre la salle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const joinForm = document.getElementById('join-form');
+            const createBtn = document.getElementById('create-btn');
+            const usernameInput = document.getElementById('username');
+            const roomIdInput = document.getElementById('room-id');
+
+            // Connexion au serveur de signalisation
+            const socket = io('http://localhost:3000'); // Spécifiez l'URL du serveur
+
+            // Générer un ID de salle aléatoire
+            function generateRoomId() {
+                return Math.random().toString(36).substring(2, 9);
+            }
+
+            // Créer une nouvelle salle
+            createBtn.addEventListener('click', () => {
+                const username = usernameInput.value.trim() || 'Utilisateur';
+                const roomId = generateRoomId();
+
+                console.log('Tentative de création de salle avec roomId:', roomId);
+
+                // Sauvegarder le nom d'utilisateur dans localStorage
+                localStorage.setItem('username', username);
+
+                // Rejoindre la salle via Socket.IO
+                socket.emit('join-room', { roomId, username }, (response) => {
+                    console.log('Réponse du serveur:', response);
+
+                    if (response.success) {
+                        console.log('Redirection vers la salle');
+                        window.location.href = `/index.html?room=${roomId}&username=${encodeURIComponent(username)}`;
+                    } else {
+                        console.error('Erreur lors de la création de la salle:', response.error);
+                        alert('Erreur lors de la création de la salle : ' + response.error);
+                    }
+                });
+            });
+
+            // Rejoindre une salle existante
+            joinForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const username = usernameInput.value.trim() || 'Utilisateur';
+                const roomId = roomIdInput.value.trim();
+
+                if (!roomId) {
+                    alert('Veuillez entrer un ID de salle');
+                    return;
+                }
+
+                console.log('Tentative de jointure de salle avec roomId:', roomId);
+
+                // Sauvegarder le nom d'utilisateur dans localStorage
+                localStorage.setItem('username', username);
+
+                // Rejoindre la salle via Socket.IO
+                socket.emit('join-room', { roomId, username }, (response) => {
+                    console.log('Réponse du serveur:', response);
+
+                    if (response.success) {
+                        console.log('Redirection vers la salle');
+                        window.location.href = `/index.html?room=${roomId}&username=${encodeURIComponent(username)}`;
+                    } else {
+                        console.error('Erreur lors de la jointure de la salle:', response.error);
+                        alert('Erreur lors de la jointure de la salle : ' + response.error);
+                    }
+                });
+            });
+
+            // Gérer les erreurs de connexion
+            socket.on('connect_error', (error) => {
+                console.error('Erreur de connexion au serveur : ' + error.message);
+                alert('Erreur de connexion au serveur : ' + error.message);
+            });
+        });
+    </script>
+</body>
+</html>

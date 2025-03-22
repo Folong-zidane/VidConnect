@@ -1,0 +1,138 @@
+# deploy/docker-compose.yml
+
+version: '3.8'
+
+services:
+  # Frontend - Application client
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ../frontend/public:/usr/share/nginx/html
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    depends_on:
+      - signaling
+    networks:
+      - frontend-net
+
+  # Serveurs de signalisation
+  signaling:
+    build:
+      context: ../signaling-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - frontend-net
+      - backend-net
+
+  # Serveurs Janus
+  janus:
+    image: canyan/janus-gateway:latest
+    volumes:
+      - ../media-server/janus.cfg:/opt/janus/etc/janus/janus.cfg
+      - ../media-server/janus.plugin.videoroom.jcfg:/opt/janus/etc/janus/janus.plugin.videoroom.jcfg
+      - ../media-server/janus.transport.http.jcfg:/opt/janus/etc/janus/janus.transport.http.jcfg
+      - ./ssl:/opt/janus/share/janus/certs:ro
+    ports:
+      - "8088:8088"
+      - "8089:8089"
+      - "10000-10500:10000-10500/udp"
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    networks:
+      - backend-net
+
+  # Serveur TURN
+  coturn:
+    image: coturn/coturn:latest
+    volumes:
+      - ../turn-server/turnserver.conf:/etc/turnserver.conf
+      - ./ssl:/etc/turnserver:ro
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "5349:5349"
+      - "5349:5349/udp"
+      - "49152-65535:49152-65535/udp"
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - backend-net
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3478:3478/udp"
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - signaling
+      - janus
+      - coturn
+    networks:
+      - frontend-net
+      - backend-net
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    networks:
+      - monitoring-net
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    networks:
+      - monitoring-net
+
+networks:
+  frontend-net:
+  backend-net:
+  monitoring-net:
+
+volumes:
+  prometheus_data:
+  grafana_data:

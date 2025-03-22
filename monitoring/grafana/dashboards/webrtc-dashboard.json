@@ -1,0 +1,986 @@
+Je vais vous fournir les fichiers minimaux nécessaires pour lancer votre projet, en excluant les fichiers que vous avez déjà mentionnés. Voici les codes essentiels :
+/audio-exchange-app/
+│
+├── frontend/                          # Application client
+│   ├── public/                        # Fichiers statiques
+│   │   ├── index.html                 
+│   │   ├── lobby.html
+│   │   ├── css/
+│   │   │   ├── main.css
+│   │   │   └── lobby.css
+│   │   └── js/
+│   │       ├── main.js                # Code principal
+│   │       ├── webrtc-handler.js      # Gestion de WebRTC
+│   │       └── ui.js                  # Interface utilisateur
+│   │
+│   └── package.json                   # Dépendances frontend
+│
+├── signaling-server/                  # Serveur de signalisation
+│   ├── server.js                      # Point d'entrée principal
+│   ├── lib/
+│   │   ├── socket-handler.js          # Gestion des WebSockets
+│   │   ├── room-manager.js            # Gestion des salles
+│   │   └── auth.js                    # Authentification
+│   │
+│   └── package.json                   # Dépendances serveur
+│
+├── media-server/                      # Configuration Janus
+│   ├── janus.cfg                      # Configuration principale
+│   ├── janus.plugin.videoroom.jcfg    # Config plugin videoroom
+│   └── janus.transport.http.jcfg      # Config transport HTTP
+│
+├── turn-server/                       # Configuration coturn
+│   └── turnserver.conf                # Configuration coturn
+│
+├── nginx/                             # Configuration Nginx
+│   └── nginx.conf                     # Config load balancer
+│
+├── monitoring/                        # Configurations monitoring
+│   ├── prometheus/
+│   │   └── prometheus.yml
+│   └── grafana/
+│       └── dashboards/
+│           └── webrtc-dashboard.json
+│
+└── deploy/                            # Scripts de déploiement
+    ├── docker-compose.yml             # Configuration Docker
+    ├── setup.sh                       # Script d'installation
+    └── .env                           # Variables d'environnement
+
+
+
+    Je vais vous présenter une architecture complète pour votre application auto-hébergée de streaming vidéo/audio en temps réel. Voici la structure du projet et les procédures d'installation.
+
+## Frontend
+
+### public/index.html
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioExchange - Chat Vidéo</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AudioExchange</h1>
+            <div class="room-info">Salle: <span id="room-id">Chargement...</span></div>
+        </div>
+
+        <div class="video-container">
+            <div class="video-grid">
+                <div class="video-wrapper local">
+                    <video id="local-video" autoplay muted playsinline></video>
+                    <div class="user-label">Vous</div>
+                </div>
+                <div class="video-wrapper remote">
+                    <video id="remote-video" autoplay playsinline></video>
+                    <div class="user-label">Participant</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="mic-btn" class="control-btn">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="camera-btn" class="control-btn">
+                <i class="fas fa-video"></i>
+            </button>
+            <button id="share-btn" class="control-btn">
+                <i class="fas fa-desktop"></i>
+            </button>
+            <button id="leave-btn" class="control-btn leave">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/webrtc-handler.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+```
+
+### public/lobby.html
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioExchange - Accueil</title>
+    <link rel="stylesheet" href="css/lobby.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AudioExchange</h1>
+            <p>Communication audio et vidéo en temps réel</p>
+        </div>
+
+        <div class="form-container">
+            <h2><i class="fas fa-video"></i> Rejoindre ou Créer une Salle</h2>
+            
+            <form id="join-form">
+                <div class="input-group">
+                    <label for="username">Votre nom (optionnel)</label>
+                    <input type="text" id="username" placeholder="Entrez votre nom">
+                </div>
+                
+                <div class="input-group">
+                    <label for="room-id">ID de la salle</label>
+                    <input type="text" id="room-id" placeholder="Entrez l'ID de la salle ou laissez vide pour en créer une">
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" id="create-btn">Créer une salle</button>
+                    <button type="submit" id="join-btn">Rejoindre la salle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const joinForm = document.getElementById('join-form');
+            const createBtn = document.getElementById('create-btn');
+            const usernameInput = document.getElementById('username');
+            const roomIdInput = document.getElementById('room-id');
+
+            // Générer un ID de salle aléatoire
+            function generateRoomId() {
+                return Math.random().toString(36).substring(2, 9);
+            }
+
+            // Créer une nouvelle salle
+            createBtn.addEventListener('click', () => {
+                const username = usernameInput.value.trim() || 'Utilisateur';
+                const roomId = generateRoomId();
+                
+                // Sauvegarder le nom d'utilisateur dans localStorage
+                localStorage.setItem('username', username);
+                
+                // Rediriger vers la salle
+                window.location.href = `/index.html?room=${roomId}&username=${encodeURIComponent(username)}`;
+            });
+
+            // Rejoindre une salle existante
+            joinForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const username = usernameInput.value.trim() || 'Utilisateur';
+                const roomId = roomIdInput.value.trim();
+                
+                if (!roomId) {
+                    alert('Veuillez entrer un ID de salle');
+                    return;
+                }
+                
+                // Sauvegarder le nom d'utilisateur dans localStorage
+                localStorage.setItem('username', username);
+                
+                // Rediriger vers la salle
+                window.location.href = `/index.html?room=${roomId}&username=${encodeURIComponent(username)}`;
+            });
+        });
+    </script>
+</body>
+</html>
+```
+
+### public/css/main.css
+```css
+:root {
+    --primary: #845695;
+    --primary-dark: #6a457a;
+    --bg-dark: #1a1a1a;
+    --bg-medium: #262625;
+    --bg-light: #3f434a;
+    --text-light: #ffffff;
+    --danger: #e74c3c;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    min-height: 100vh;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.header {
+    background-color: var(--bg-medium);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    color: var(--primary);
+}
+
+.room-info {
+    background-color: var(--bg-light);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.video-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(45%, 1fr));
+    gap: 1rem;
+    width: 100%;
+    max-height: 80vh;
+}
+
+.video-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: var(--bg-medium);
+    aspect-ratio: 16/9;
+}
+
+.video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-label {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 0.3rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.remote {
+    display: none;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--bg-medium);
+}
+
+.control-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--bg-light);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-light);
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+    background-color: var(--primary-dark);
+}
+
+.control-btn.leave {
+    background-color: var(--danger);
+}
+
+.control-btn.off {
+    background-color: var(--danger);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .video-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .control-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+}
+```
+
+### public/css/lobby.css
+```css
+:root {
+    --primary: #845695;
+    --primary-dark: #6a457a;
+    --bg-dark: #1a1a1a;
+    --bg-medium: #262625;
+    --bg-light: #3f434a;
+    --text-light: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    width: 90%;
+    max-width: 600px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.form-container {
+    background-color: var(--bg-medium);
+    border-radius: 8px;
+    padding: 2rem;
+}
+
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: var(--bg-light);
+    border: none;
+    border-radius: 4px;
+    color: var(--text-light);
+}
+
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+button {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#create-btn {
+    background-color: var(--bg-light);
+    color: var(--text-light);
+}
+
+#create-btn:hover {
+    background-color: var(--bg-light);
+    opacity: 0.9;
+}
+
+#join-btn {
+    background-color: var(--primary);
+    color: var(--text-light);
+}
+
+#join-btn:hover {
+    background-color: var(--primary-dark);
+}
+```
+
+### public/js/ui.js
+```javascript
+// UI Handler for AudioExchange
+
+class UIHandler {
+    constructor() {
+        // Éléments UI
+        this.localVideo = document.getElementById('local-video');
+        this.remoteVideo = document.getElementById('remote-video');
+        this.remoteWrapper = document.querySelector('.video-wrapper.remote');
+        this.micBtn = document.getElementById('mic-btn');
+        this.cameraBtn = document.getElementById('camera-btn');
+        this.shareBtn = document.getElementById('share-btn');
+        this.leaveBtn = document.getElementById('leave-btn');
+        this.roomIdElement = document.getElementById('room-id');
+        
+        // État des médias
+        this.isAudioEnabled = true;
+        this.isVideoEnabled = true;
+        this.isScreenSharing = false;
+        
+        // Attacher les gestionnaires d'événements
+        this.attachEventListeners();
+    }
+    
+    // Configurer les gestionnaires d'événements
+    attachEventListeners() {
+        this.micBtn.addEventListener('click', () => this.toggleAudio());
+        this.cameraBtn.addEventListener('click', () => this.toggleVideo());
+        this.shareBtn.addEventListener('click', () => this.toggleScreenShare());
+        this.leaveBtn.addEventListener('click', () => this.leaveRoom());
+    }
+    
+    // Afficher l'ID de la salle
+    setRoomId(roomId) {
+        this.roomIdElement.textContent = roomId;
+    }
+    
+    // Gestionnaires pour activer/désactiver l'audio
+    toggleAudio() {
+        this.isAudioEnabled = !this.isAudioEnabled;
+        this.updateMicButton();
+        
+        // Événement personnalisé pour le gestionnaire WebRTC
+        const event = new CustomEvent('toggle-audio', { 
+            detail: { enabled: this.isAudioEnabled }
+        });
+        document.dispatchEvent(event);
+    }
+    
+    // Gestionnaires pour activer/désactiver la vidéo
+    toggleVideo() {
+        this.isVideoEnabled = !this.isVideoEnabled;
+        this.updateCameraButton();
+        
+        // Événement personnalisé pour le gestionnaire WebRTC
+        const event = new CustomEvent('toggle-video', { 
+            detail: { enabled: this.isVideoEnabled }
+        });
+        document.dispatchEvent(event);
+    }
+    
+    // Gestionnaires pour activer/désactiver le partage d'écran
+    toggleScreenShare() {
+        this.isScreenSharing = !this.isScreenSharing;
+        this.updateScreenShareButton();
+        
+        // Événement personnalisé pour le gestionnaire WebRTC
+        const event = new CustomEvent('toggle-screen-share', { 
+            detail: { enabled: this.isScreenSharing }
+        });
+        document.dispatchEvent(event);
+    }
+    
+    // Quitter la salle
+    leaveRoom() {
+        // Événement personnalisé pour le gestionnaire WebRTC
+        document.dispatchEvent(new Event('leave-room'));
+        
+        // Redirection vers la page d'accueil
+        window.location.href = 'lobby.html';
+    }
+    
+    // Mettre à jour l'apparence du bouton micro
+    updateMicButton() {
+        if (this.isAudioEnabled) {
+            this.micBtn.classList.remove('off');
+            this.micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+        } else {
+            this.micBtn.classList.add('off');
+            this.micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        }
+    }
+    
+    // Mettre à jour l'apparence du bouton caméra
+    updateCameraButton() {
+        if (this.isVideoEnabled) {
+            this.cameraBtn.classList.remove('off');
+            this.cameraBtn.innerHTML = '<i class="fas fa-video"></i>';
+        } else {
+            this.cameraBtn.classList.add('off');
+            this.cameraBtn.innerHTML = '<i class="fas fa-video-slash"></i>';
+        }
+    }
+    
+    // Mettre à jour l'apparence du bouton partage d'écran
+    updateScreenShareButton() {
+        if (this.isScreenSharing) {
+            this.shareBtn.classList.add('off');
+            this.shareBtn.innerHTML = '<i class="fas fa-stop"></i>';
+        } else {
+            this.shareBtn.classList.remove('off');
+            this.shareBtn.innerHTML = '<i class="fas fa-desktop"></i>';
+        }
+    }
+    
+    // Afficher la vidéo distante
+    showRemoteVideo() {
+        this.remoteWrapper.style.display = 'block';
+    }
+    
+    // Masquer la vidéo distante
+    hideRemoteVideo() {
+        this.remoteWrapper.style.display = 'none';
+    }
+    
+    // Afficher une notification
+    showNotification(message, type = 'info') {
+        // Implémentation simple de notification
+        alert(message);
+    }
+}
+
+// Créer et exporter l'instance UI
+const UI = new UIHandler();
+```
+
+### public/js/main.js
+```javascript
+// Main application code for AudioExchange
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Paramètres d'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room');
+    const username = urlParams.get('username') || localStorage.getItem('username') || 'Utilisateur';
+    
+    // Rediriger vers la page d'accueil si aucun ID de salle n'est spécifié
+    if (!roomId) {
+        window.location.href = 'lobby.html';
+        return;
+    }
+    
+    // Afficher l'ID de la salle
+    UI.setRoomId(roomId);
+    
+    // Initialiser la connexion WebRTC
+    WebRTCHandler.initialize({
+        roomId,
+        username,
+        onLocalStream: (stream) => {
+            document.getElementById('local-video').srcObject = stream;
+        },
+        onRemoteStream: (stream) => {
+            document.getElementById('remote-video').srcObject = stream;
+            UI.showRemoteVideo();
+        },
+        onRemoteDisconnect: () => {
+            UI.hideRemoteVideo();
+            UI.showNotification('Le participant a quitté la salle', 'info');
+        },
+        onError: (error) => {
+            console.error('WebRTC Error:', error);
+            UI.showNotification(`Erreur de connexion: ${error.message}`, 'error');
+        }
+    });
+    
+    // Gérer les événements de fermeture de page
+    window.addEventListener('beforeunload', () => {
+        WebRTCHandler.cleanup();
+    });
+});
+```
+
+## Serveur de signalisation
+
+### server.js
+```javascript
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
+const socketHandler = require('./lib/socket-handler');
+const roomManager = require('./lib/room-manager');
+
+// Configuration
+const PORT = process.env.PORT || 3000;
+
+// Initialiser l'application Express
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+// Servir les fichiers statiques
+app.use(express.static(path.join(__dirname, '../frontend/public')));
+
+// Routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/public/lobby.html'));
+});
+
+// Initialiser le gestionnaire de sockets
+socketHandler.initialize(io, roomManager);
+
+// Démarrer le serveur
+server.listen(PORT, () => {
+    console.log(`Serveur démarré sur le port ${PORT}`);
+});
+```
+
+### lib/socket-handler.js
+```javascript
+// Gestionnaire de WebSockets pour le serveur de signalisation
+
+function initialize(io, roomManager) {
+    io.on('connection', (socket) => {
+        console.log(`Nouvelle connexion: ${socket.id}`);
+
+        // Rejoindre une salle
+        socket.on('join-room', (data) => {
+            const { roomId, username } = data;
+            
+            // Ajouter l'utilisateur à la salle
+            const result = roomManager.joinRoom(roomId, {
+                socketId: socket.id,
+                username: username || 'Utilisateur'
+            });
+            
+            // Rejoindre la salle Socket.io
+            socket.join(roomId);
+            
+            // Informer l'utilisateur du résultat
+            socket.emit('room-joined', { 
+                success: result.success,
+                message: result.message,
+                participants: result.participants
+            });
+            
+            // Informer les autres participants de la salle
+            socket.to(roomId).emit('user-joined', {
+                socketId: socket.id,
+                username: username || 'Utilisateur'
+            });
+            
+            // Stocker l'ID de la salle pour une référence future
+            socket.roomId = roomId;
+            
+            console.log(`Utilisateur ${socket.id} a rejoint la salle ${roomId}`);
+        });
+        
+        // Signal WebRTC (offre, réponse, candidats ICE)
+        socket.on('webrtc-signal', (data) => {
+            const { roomId, target, signal } = data;
+            
+            // Transmettre le signal au destinataire
+            io.to(target).emit('webrtc-signal', {
+                from: socket.id,
+                signal
+            });
+        });
+        
+        // Déconnexion
+        socket.on('disconnect', () => {
+            const roomId = socket.roomId;
+            
+            if (roomId) {
+                // Retirer l'utilisateur de la salle
+                roomManager.leaveRoom(roomId, socket.id);
+                
+                // Informer les autres participants
+                socket.to(roomId).emit('user-left', {
+                    socketId: socket.id
+                });
+                
+                console.log(`Utilisateur ${socket.id} a quitté la salle ${roomId}`);
+            }
+            
+            console.log(`Déconnexion: ${socket.id}`);
+        });
+    });
+}
+
+module.exports = { initialize };
+```
+
+### lib/room-manager.js
+```javascript
+// Gestionnaire de salles pour le serveur de signalisation
+
+// Structure pour stocker les salles et leurs participants
+const rooms = new Map();
+
+/**
+ * Ajouter un utilisateur à une salle
+ */
+function joinRoom(roomId, user) {
+    // Créer la salle si elle n'existe pas
+    if (!rooms.has(roomId)) {
+        rooms.set(roomId, new Map());
+    }
+    
+    const room = rooms.get(roomId);
+    
+    // Refuser si la salle est pleine (max 2 participants pour un chat vidéo simple)
+    if (room.size >= 2) {
+        return {
+            success: false,
+            message: 'La salle est pleine',
+            participants: Array.from(room.values())
+        };
+    }
+    
+    // Ajouter l'utilisateur à la salle
+    room.set(user.socketId, user);
+    
+    return {
+        success: true,
+        message: 'Bienvenue dans la salle',
+        participants: Array.from(room.values())
+    };
+}
+
+/**
+ * Retirer un utilisateur d'une salle
+ */
+function leaveRoom(roomId, socketId) {
+    // Vérifier si la salle existe
+    if (!rooms.has(roomId)) {
+        return {
+            success: false,
+            message: 'La salle n\'existe pas'
+        };
+    }
+    
+    const room = rooms.get(roomId);
+    
+    // Retirer l'utilisateur
+    room.delete(socketId);
+    
+    // Supprimer la salle si elle est vide
+    if (room.size === 0) {
+        rooms.delete(roomId);
+    }
+    
+    return {
+        success: true,
+        message: 'Vous avez quitté la salle',
+        participants: Array.from(room.values())
+    };
+}
+
+/**
+ * Obtenir les participants d'une salle
+ */
+function getRoomParticipants(roomId) {
+    // Vérifier si la salle existe
+    if (!rooms.has(roomId)) {
+        return [];
+    }
+    
+    const room = rooms.get(roomId);
+    return Array.from(room.values());
+}
+
+/**
+ * Vérifier si une salle existe
+ */
+function roomExists(roomId) {
+    return rooms.has(roomId);
+}
+
+module.exports = {
+    joinRoom,
+    leaveRoom,
+    getRoomParticipants,
+    roomExists
+};
+```
+
+### lib/auth.js
+```javascript
+// Module d'authentification basique
+
+/**
+ * Authentifier un utilisateur (version simple)
+ */
+function authenticateUser(username, password) {
+    // Dans un cas réel, vous vérifieriez contre une base de données
+    // ou un service d'authentification
+    return {
+        success: true,
+        userId: 'user-' + Math.floor(Math.random() * 10000)
+    };
+}
+
+/**
+ * Vérifier si un token est valide
+ */
+function verifyToken(token) {
+    // Implémentation simplifiée
+    return true;
+}
+
+module.exports = {
+    authenticateUser,
+    verifyToken
+};
+```
+
+## Fichiers package.json
+
+### frontend/package.json
+```json
+{
+  "name": "audio-exchange-frontend",
+  "version": "1.0.0",
+  "description": "Interface utilisateur pour l'application AudioExchange",
+  "main": "index.js",
+  "scripts": {
+    "start": "serve public"
+  },
+  "dependencies": {
+    "serve": "^14.0.0"
+  }
+}
+```
+
+### signaling-server/package.json
+```json
+{
+  "name": "audio-exchange-signaling",
+  "version": "1.0.0",
+  "description": "Serveur de signalisation pour AudioExchange",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
+```
+
+## Déploiement
+
+### deploy/docker-compose.yml
+```yaml
+version: '3.8'
+
+services:
+  signaling:
+    build: 
+      context: ../signaling-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ../frontend/public:/usr/share/nginx/html
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - signaling
+    restart: always
+```
+
+### deploy/setup.sh
+```bash
+#!/bin/bash
+
+# Script d'installation pour AudioExchange
+
+echo "Installation d'AudioExchange..."
+
+# Installer les dépendances node pour le serveur de signalisation
+echo "Installation des dépendances du serveur de signalisation..."
+cd ../signaling-server
+npm install
+
+# Installer les dépendances pour le frontend
+echo "Installation des dépendances frontend..."
+cd ../frontend
+npm install
+
+# Retour au dossier de déploiement
+cd ../deploy
+
+# Lancer l'application avec Docker Compose
+echo "Lancement des conteneurs Docker..."
+docker-compose up -d
+
+echo "Installation terminée. L'application est accessible à l'adresse http://localhost"
+```
+
+### deploy/.env
+```
+# Configuration pour le déploiement d'AudioExchange
+
+# Serveur de signalisation
+SIGNAL_PORT=3000
+
+# Configuration STUN/TURN
+TURN_SERVER=stun:stun.l.google.com:19302
+
+# Configuration SSL
+SSL_ENABLED=false
+```
+
+Ces fichiers constituent une structure de base pour lancer votre projet de chat vidéo. Vous pouvez les adapter ou les étendre selon vos besoins spécifiques.

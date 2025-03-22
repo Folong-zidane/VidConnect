@@ -1,0 +1,901 @@
+/* Réinitialisation générale */
+
+
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #34c759;
+    --error-color: #ff3b30;
+    --background-color: #f4f4f9;
+    --text-color: #333;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: #f0f2f5;
+    color: #333;
+    height: 100vh;
+    /* Permettre le défilement vertical global */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Utiliser min-height au lieu de height fixe */
+    background-color: #1a1a1a;
+    color: #fff;
+}
+
+/* Barre d'en-tête */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2a2a2a;
+    padding: 10px 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    position: sticky; /* Garder l'en-tête visible lors du défilement */
+    top: 0;
+}
+
+.logo h2 {
+    font-size: 1.5rem;
+    color: #4285f4;
+}
+
+.room-info {
+    display: flex;
+    gap: 20px;
+}
+
+.room-info p {
+    font-size: 0.9rem;
+    color: #ddd;
+}
+
+.connecting {
+    color: #ffc107;
+}
+
+/* Conteneur de vidéos */
+#videos-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    /* Permettre le défilement à l'intérieur du conteneur de vidéos */
+    overflow-y: auto;
+    padding-bottom: 130px; /* Espace pour les participants en bas */
+}
+
+/* Grille vidéo principale - enseignant et utilisateur actif */
+#video-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-auto-rows: minmax(300px, auto);
+    gap: 15px;
+    padding: 15px;
+    min-height: calc(100vh - 200px); /* Espace minimal pour voir les vidéos principales */
+}
+
+/* Style pour les vidéos principales (enseignant et utilisateur) */
+.video-wrapper {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    min-height: 300px;
+}
+
+.video-wrapper.local-video {
+    border: 2px solid #4285f4;
+    z-index: 2; /* Mettre la vidéo locale au-dessus */
+}
+
+.video-wrapper.teacher-video {
+    border: 2px solid #ea4335;
+    z-index: 3; /* Mettre la vidéo de l'enseignant tout en haut */
+    grid-column: 1 / -1; /* Par défaut, l'enseignant occupe toute la largeur */
+}
+
+.video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-name {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.video-stats {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+
+/* Conteneur pour les participants secondaires */
+#participants-container {
+    position: fixed;
+    bottom: 70px; /* Laisser de l'espace pour les contrôles */
+    left: 0;
+    right: 0;
+    height: 120px;
+    background-color: rgba(42, 42, 42, 0.9);
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    transition: height 0.3s ease;
+    z-index: 5;
+}
+
+#participants-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+#participants-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+#participants-container::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+#participants-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Style pour les vidéos des participants secondaires */
+.participant-video {
+    flex: 0 0 160px;
+    height: 100px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    background-color: #333;
+    transition: all 0.2s ease;
+}
+
+.participant-video:hover {
+    transform: scale(1.05);
+}
+
+.participant-video .video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.participant-video .user-name {
+    font-size: 0.7rem;
+}
+
+/* Contrôles vidéo */
+#controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px 0;
+    background-color: #2a2a2a;
+    z-index: 10;
+    position: fixed; /* Garder les contrôles toujours visibles */
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+.control-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-container:hover {
+    background-color: #444;
+}
+
+.control-container i {
+    color: #fff;
+    font-size: 1.2rem;
+}
+
+#mic-btn.muted {
+    background-color: #ea4335;
+}
+
+#camera-btn.off {
+    background-color: #ea4335;
+}
+
+#leave-btn {
+    background-color: #ea4335;
+    text-decoration: none;
+}
+
+#leave-btn:hover {
+    background-color: #d33426;
+}
+
+/* Modale des paramètres */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #2a2a2a;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #fff;
+}
+
+.settings-section {
+    margin: 20px 0;
+}
+
+.settings-section h3 {
+    margin-bottom: 10px;
+    color: #4285f4;
+}
+
+.device-selector, .quality-selector {
+    margin: 10px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.device-selector label, .quality-selector label {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+select {
+    padding: 8px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+button#apply-settings {
+    padding: 10px 15px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+button#apply-settings:hover {
+    background-color: #3367d6;
+}
+
+/* Styles pour le cercle utilisateur quand la caméra est désactivée */
+.user-circle {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #4285f4;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+/* Boutons de redimensionnement et de masquage */
+.video-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.video-wrapper:hover .video-controls {
+    opacity: 1;
+}
+
+.video-control-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.video-control-btn i {
+    color: white;
+    font-size: 0.8rem;
+}
+
+/* Styles pour les différentes tailles de vidéos */
+.video-wrapper.small {
+    grid-column: span 1;
+}
+
+.video-wrapper.medium {
+    grid-column: span 2;
+}
+
+.video-wrapper.large {
+    grid-column: span 2;
+    grid-row: span 2;
+}
+
+.video-wrapper.hidden {
+    display: none;
+}
+
+/* Style pour le mode focus (un participant principal) */
+#video-grid.focus-mode {
+    grid-template-columns: 1fr;
+}
+
+/* Ajout d'un indicateur de rôle pour l'enseignant */
+.role-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(234, 67, 53, 0.8);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    z-index: 4;
+}
+
+/* Badges pour indiquer l'état des périphériques */
+.device-status {
+    position: absolute;
+    bottom: 40px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.device-badge {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.7rem;
+}
+
+.device-badge.disabled {
+    background-color: rgba(234, 67, 53, 0.8);
+}
+
+/* Adaptations responsives */
+@media (max-width: 768px) {
+    #video-grid {
+        grid-template-columns: 1fr;
+        grid-auto-rows: minmax(200px, auto);
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    #participants-container {
+        height: 100px;
+        bottom: 60px;
+    }
+    
+    .participant-video {
+        flex: 0 0 120px;
+        height: 80px;
+    }
+    
+    .control-container {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .video-wrapper {
+        min-height: 200px;
+    }
+}
+
+/* Animations pour les transitions */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.video-wrapper {
+    animation: fadeIn 0.5s ease;
+}
+
+.participant-video {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Ajout pour permettre l'ajustement dynamique de la grille des participants */
+#video-grid[data-count="1"] {
+    grid-template-columns: 1fr;
+}
+
+#video-grid[data-count="2"] {
+    grid-template-columns: 1fr 1fr;
+}
+
+#video-grid[data-count="3"] {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+#video-grid[data-count="4"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+/* Ajout pour la gestion de la bande passante - vidéos de taille réduite */
+.video-wrapper.low-bandwidth video {
+    filter: blur(1px);
+}
+
+/* Ajout pour l'état des participants */
+.participant-status {
+    position: absolute;
+    top: 40px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+
+/* Le bouton d'expansion pour les participants secondaires */
+#expand-participants {
+    position: absolute;
+    left: 50%;
+    top: -15px;
+    transform: translateX(-50%);
+    background-color: #2a2a2a;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 6;
+}
+
+#participants-container.expanded {
+    height: 200px;
+}
+
+
+/* Fenêtre de chat */
+#chat-container {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 320px;
+    height: 100%;
+    background-color: #292a2d;
+    border-left: 1px solid #3c4043;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+#chat-container.open {
+    transform: translateX(0);
+}
+
+.chat-header {
+    padding: 15px;
+    border-bottom: 1px solid #3c4043;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-header h3 {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.close-chat {
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #3c4043;
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #5f6368;
+    border-radius: 4px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    position: relative;
+    word-wrap: break-word;
+}
+
+.message.received {
+    background-color: #3c4043;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.message.sent {
+    background-color: #1a73e8;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.message-sender {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 3px;
+}
+
+.message-time {
+    font-size: 10px;
+    color: #aaa;
+    position: absolute;
+    bottom: -15px;
+    right: 5px;
+}
+
+.chat-input {
+    padding: 15px;
+    border-top: 1px solid #3c4043;
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: none;
+    background-color: #3c4043;
+    color: white;
+    outline: none;
+}
+
+.send-message {
+    width: 40px;
+    height: 40px;
+    background-color: #1a73e8;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.send-message i {
+    color: white;
+}
+
+/* Modale des paramètres */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    overflow: auto;
+    animation: fadeIn 0.2s;
+}
+
+.modal-content {
+    background-color: #292a2d;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    animation: slideIn 0.3s;
+}
+
+.close {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #aaa;
+}
+
+.close:hover {
+    color: white;
+}
+
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #e8eaed;
+}
+
+.device-selector, .quality-selector {
+    margin-bottom: 15px;
+}
+
+.device-selector label, .quality-selector label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #aaa;
+}
+
+.device-selector select, .quality-selector select {
+    width: 100%;
+    padding: 10px;
+    background-color: #3c4043;
+    border: 1px solid #5f6368;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    appearance: none;
+}
+
+#apply-settings {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a73e8;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#apply-settings:hover {
+    background-color: #185abc;
+}
+
+/* Styles pour "lever la main" */
+.raise-hand-container {
+    position: relative;
+}
+
+.raised-hands-list {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #292a2d;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    width: 250px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 20;
+    display: none;
+}
+
+.raised-hands-list.visible {
+    display: block;
+}
+
+.raised-hand-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #3c4043;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.raised-hand-item:last-child {
+    border-bottom: none;
+}
+
+.raised-hand-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-initial {
+    width: 30px;
+    height: 30px;
+    background-color: #5f6368;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    color: white;
+}
+
+.raised-hand-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.raised-hand-action {
+    width: 30px;
+    height: 30px;
+    background-color: #3c4043;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.raised-hand-action.accept {
+    background-color: #34a853;
+}
+
+.raised-hand-action.reject {
+    background-color: #ea4335;
+}
+
+.raised-hand-action i {
+    font-size: 14px;
+    color: white;
+}
+
+/* Animation pour le badge de main levée */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.hand-raised {
+    animation: pulse 1.5s infinite;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Médias queries pour le responsive */
+@media screen and (max-width: 768px) {
+    .header {
+        padding: 10px;
+        height: 60px;
+    }
+    
+    .room-info {
+        gap: 10px;
+        flex-direction: column;
+        font-size: 12px;
+    }
+    
+    #controls {
+        padding: 10px 0;
+        gap: 10px;
+        height: 70px;
+    }
+    
+    .control-container {
+        width: 40px;
+        height: 40px;
+    }
+    
+    #chat-container {
+        width: 100%;
+    }
+    
+    .layout-split-screen #video-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(2, 1fr);
+    }
+    
+    #participants-strip {
+        height: 100px;
+    }
+    
+    .participant-video {
+        width: 120px;
+        height: 80px;
+    }
+}

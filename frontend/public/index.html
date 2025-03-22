@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioExchange - Chat Vidéo</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo">
+                <h2>AudioExchange</h2>
+            </div>
+            <div class="room-info">
+                <p>Salle: <span id="room-name">Chargement...</span></p>
+                <p id="connection-status">Statut: <span class="connecting">En attente de connexion...</span></p>
+            </div>
+        </div>
+
+        <div id="videos-container">
+            <!-- Conteneur pour les 2 vidéos principales (enseignant et utilisateur) -->
+            <div class="main-participants">
+                <!-- Vidéo de l'enseignant (initiateur) -->
+                <div class="video-wrapper teacher-video" id="teacher-video-container">
+                    <video class="video-player" id="teacher-video" autoplay playsinline></video>
+                    <div class="user-name">Enseignant</div>
+                    <div class="user-circle" id="teacher-circle">T</div>
+                    <!-- Contrôles spécifiques à cette vidéo -->
+                    <div class="video-controls">
+                        <div class="video-control-btn" id="minimize-teacher" title="Minimiser">
+                            <i class="fas fa-compress"></i>
+                        </div>
+                        <div class="video-control-btn" id="hide-teacher" title="Masquer">
+                            <i class="fas fa-eye-slash"></i>
+                        </div>
+                    </div>
+                    <!-- Indicateurs -->
+                    <div class="mic-indicator" id="teacher-mic">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="camera-indicator" id="teacher-camera">
+                        <i class="fas fa-video"></i>
+                    </div>
+                </div>
+                
+                <!-- Vidéo locale de l'utilisateur -->
+                <div class="video-wrapper local-video" id="local-video-container">
+                    <video class="video-player" id="local-video" autoplay playsinline muted></video>
+                    <div class="user-name">Vous</div>
+                    <div class="user-circle" id="user-circle">V</div>
+                    <div class="video-stats" id="local-stats"></div>
+                    <!-- Contrôles spécifiques à cette vidéo -->
+                    <div class="video-controls">
+                        <div class="video-control-btn" id="minimize-local" title="Minimiser">
+                            <i class="fas fa-compress"></i>
+                        </div>
+                        <div class="video-control-btn" id="hide-local" title="Masquer">
+                            <i class="fas fa-eye-slash"></i>
+                        </div>
+                    </div>
+                    <!-- Indicateurs -->
+                    <div class="mic-indicator" id="local-mic">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="camera-indicator" id="local-camera">
+                        <i class="fas fa-video"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Conteneur pour les autres participants (scrollable) -->
+            <div class="other-participants" id="other-participants">
+                <!-- Les vidéos des autres participants seront ajoutées dynamiquement ici -->
+            </div>
+            </div>
+            <!-- Fenêtre de chat -->
+            <div id="chat-container">
+                <div class="chat-header">
+                    <h3>Chat de la classe</h3>
+                    <span class="close-chat">&times;</span>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Les messages seront ajoutés dynamiquement ici -->
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input-field" placeholder="Écrivez votre message...">
+                    <div class="send-message" id="send-chat">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+        <div id="controls">
+
+            <div class="control-container raise-hand-container" id="raise-hand-btn" title="Lever la main">
+                <i class="fas fa-hand"></i>
+                
+                <!-- Liste des mains levées (visible uniquement pour l'enseignant) -->
+                <div class="raised-hands-list" id="raised-hands-list">
+                    <!-- Les mains levées seront ajoutées dynamiquement ici -->
+                </div>
+            </div>
+            <div class="control-container" id="chat-btn" title="Ouvrir le chat">
+                <i class="fas fa-comment"></i>
+            </div>
+            <div class="control-container" id="mic-btn" title="Activer/Désactiver le micro">
+                <i class="fas fa-microphone"></i>
+            </div>
+            <div class="control-container" id="camera-btn" title="Activer/Désactiver la caméra">
+                <i class="fas fa-video"></i>
+            </div>
+            <div class="control-container" id="screen-btn" title="Partager l'écran">
+                <i class="fas fa-desktop"></i>
+            </div>
+            <div class="control-container" id="settings-btn" title="Paramètres">
+                <i class="fas fa-cog"></i>
+            </div>
+            <a href="lobby.html" class="control-container" id="leave-btn" title="Quitter l'appel">
+                <i class="fas fa-phone-slash"></i>
+            </a>
+        </div>
+        
+        <!-- Modale des paramètres -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Paramètres</h2>
+                <div class="settings-section">
+                    <h3>Sélection des périphériques</h3>
+                    <div class="device-selector">
+                        <label for="video-source">Caméra:</label>
+                        <select id="video-source"></select>
+                    </div>
+                    <div class="device-selector">
+                        <label for="audio-source">Microphone:</label>
+                        <select id="audio-source"></select>
+                    </div>
+                    <div class="device-selector">
+                        <label for="audio-output">Sortie audio:</label>
+                        <select id="audio-output"></select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Qualité vidéo</h3>
+                    <div class="quality-selector">
+                        <label for="video-quality">Résolution:</label>
+                        <select id="video-quality">
+                            <option value="low">Basse (480p)</option>
+                            <option value="medium" selected>Moyenne (720p)</option>
+                            <option value="high">Haute (1080p)</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="apply-settings">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Utilisation de socket.io pour la signalisation -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/room.js"></script>
+    
+</body>
+</html>

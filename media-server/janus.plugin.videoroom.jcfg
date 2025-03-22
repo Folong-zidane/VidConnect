@@ -1,0 +1,18 @@
+# media-server/janus.plugin.videoroom.jcfg
+
+general: {
+    events = true                # Activer les événements pour Prometheus
+    admin_key = "janusoverlord"  # Clé pour les opérations administratives
+}
+
+room-1234: {
+    description = "Salle de démonstration"
+    secret = "roomsecret"
+    publishers = 100          # Nombre maximum de diffuseurs
+    bitrate = 1024000         # Débit maximal (1Mbps)
+    fir_freq = 10             # Demande d'image complète tous les 10s
+    audiocodec = "opus"
+    videocodec = "vp9,h264"   # Prioriser VP9, puis H.264
+    record = false
+    notify_joining = true
+}

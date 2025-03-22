@@ -1,0 +1,19 @@
+{
+    "name": "audio-exchange-frontend",
+    "version": "1.0.0",
+    "description": "Interface utilisateur pour l'application AudioExchange",
+    "main": "index.js",
+    "scripts": {
+        "start": "serve public"
+    },
+    "dependencies": {
+        "express": "^4.21.2",
+        "http": "^0.0.1-security",
+        "serve": "^14.0.0",
+        "socket.io": "^4.8.1",
+        "socket.io-client": "^4.8.1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}
