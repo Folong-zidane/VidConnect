@@ -54,8 +54,11 @@
             const roomIdInput = document.getElementById('room-id');
 
             // Connexion au serveur de signalisation
-            const socket = io('http://localhost:3000'); // Spécifiez l'URL du serveur
-
+            const serverUrl = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : window.location.origin;
+    
+            const socket = io(serverUrl);
             // Générer un ID de salle aléatoire
             function generateRoomId() {
                 return Math.random().toString(36).substring(2, 9);
