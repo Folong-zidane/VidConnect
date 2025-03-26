@@ -1,3 +1,4 @@
+
 class RoomManager {
   constructor() {
     this.rooms = {}; // Stocker les informations des salles
@@ -459,10 +460,85 @@ class RoomManager {
       activeVideoCount,
       activeAudioCount,
       raisedHandCount,
+      addChatMessage,
       roomAge: Date.now() - this.rooms[roomId].config.createdAt,
       messageCount: this.rooms[roomId].messages.length
     };
   }
+
+  getDefaultPermissions(role) {
+    return {
+        chat: role === 'teacher' ? true : this.rooms.get(this.currentRoomId)?.chatEnabled,
+        raiseHand: role === 'teacher' ? false : this.rooms.get(this.currentRoomId)?.handRaiseEnabled,
+        microphone: role === 'teacher'
+    };
+  }
+
+  handleTeacherControl(roomId, action, targetSocketId) {
+      const room = this.rooms.get(roomId);
+      if (!room) return false;
+
+      const participant = room.participants.get(targetSocketId);
+      if (!participant) return false;
+
+      switch (action) {
+          case 'mute-mic':
+              participant.permissions.microphone = false;
+              break;
+          case 'unmute-mic':
+              participant.permissions.microphone = true;
+              break;
+          case 'disable-camera':
+              participant.permissions.camera = false;
+              break;
+          case 'enable-camera':
+              participant.permissions.camera = true;
+              break;
+      }
+
+      return true;
+  }
+
+  // Gestion des messages avec politiques
+  handleChatMessage(socket, data) {
+      const room = this.rooms.get(socket.roomId);
+      if (!room) return false;
+
+      // Vérifier les permissions de chat
+      if (!room.chatEnabled || 
+          (socket.role !== 'teacher' && !room.participants.get(socket.id).permissions.chat)) {
+          return false;
+      }
+
+      // Validation du message
+      if (data.message.length > 500) return false;
+
+      // Broadcast du message
+      const messageData = {
+          sender: socket.username,
+          message: data.message,
+          timestamp: Date.now(),
+          role: socket.role
+      };
+
+      return messageData;
+  }
+
+  // Gestion des levées de main
+  handleHandRaise(socket) {
+      const room = this.rooms.get(socket.roomId);
+      if (!room || !room.handRaiseEnabled) return false;
+
+      return {
+          studentId: socket.id,
+          username: socket.username
+      };
+  }
+
+
+
+
+
 }
 
 // Exporter une instance unique du gestionnaire de salles
